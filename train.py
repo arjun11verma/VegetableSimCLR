@@ -5,13 +5,13 @@ from tqdm import tqdm
 
 def train_model(learning_rate, num_epochs, n):
     sim_clr_model = model.SimCLR(500, 100)
-    loss_function = model.NXTentLoss(1)
+    loss_function = model.NXTentLoss(0.25)
     optimizer = torch.optim.Adam(sim_clr_model.parameters(), lr=learning_rate)
     training_dataset = data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/train')
 
     running_loss = 0
-    for i in tqdm(range(num_epochs)):
-        mini_batch = training_dataset.get_mini_batch(n, data_loader.DataAugmentation.augment_gaussian)
+    for i in (range(num_epochs)):
+        mini_batch, batch_labels = training_dataset.get_mini_batch(n, data_loader.DataAugmentation.pull_from_class)
 
         optimizer.zero_grad()
 
@@ -20,7 +20,18 @@ def train_model(learning_rate, num_epochs, n):
         loss.backward()
         optimizer.step()
 
-        print(f'Loss: {round(loss.item(), 3)}')
+        running_loss += loss.item()
+        if (i != 0 and (i % 2) == 0):
+            print(f'Average loss at epoch {i}: {round(running_loss / 2, 3)}')
+            running_loss = 0
+
+def sample_batch(n):
+    training_dataset = data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/train')
+    batch, labels = training_dataset.get_mini_batch(n, data_loader.DataAugmentation.pull_from_class)
+
+    for i, img in enumerate(batch):
+        data_loader.save_image(img, f'Image_{i}_Category_{labels[i][0]}.jpg')
 
 if __name__ == '__main__':
-    train_model(1.5, 100, 3)
+    #sample_batch(8)
+    train_model(1, 1000, 8)
