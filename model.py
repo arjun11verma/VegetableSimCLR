@@ -43,8 +43,12 @@ class NXTentLoss(nn.Module):
     def __get_loss_pair(self, similarity_row, positive_index):
         n_increment = int(similarity_row.shape[0] / 2)
         if (positive_index >= n_increment): n_increment *= -1
+
         similarity_row = torch.exp(similarity_row / self.temprature)
-        similarity_row[positive_index] = 0
+        sum_selection = torch.ones(similarity_row.shape[0])
+        sum_selection[positive_index] = 0
+        similarity_row = similarity_row * sum_selection
+
         return -1 * torch.log(similarity_row[positive_index + n_increment] / torch.sum(similarity_row))
     
     def forward(self, projected_vectors):

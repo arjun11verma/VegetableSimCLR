@@ -26,7 +26,8 @@ class VegetableDataset():
         return image
     
     def __generate_mini_batch(self, n):
-        """Base (positive) image will always be the first element in the array"""
+        if (n > len(self.image_names)): ValueError(f'Minibatch unaugmented size {n} is greater than number of classes {len(self.image_names)}')
+
         class_labels = self.image_names.copy()
 
         base_class = random.choice(class_labels)
@@ -41,6 +42,7 @@ class VegetableDataset():
         for i in range(1, n):
             add_class = random.choice(class_labels)
             add_idx = random.randint(0, len(self.image_labels[add_class]) - 1)
+            class_labels.remove(add_class)
 
             if ((add_class, add_idx) in visited): 
                 i -= 1
