@@ -46,10 +46,12 @@ class NXTentLoss(nn.Module):
 
         similarity_row = torch.exp(similarity_row / self.temprature)
         sum_selection = torch.ones(similarity_row.shape[0])
+        
+        positive_similarity = similarity_row[positive_index + n_increment]
         sum_selection[positive_index] = 0
         similarity_row = similarity_row * sum_selection
 
-        return -1 * torch.log(similarity_row[positive_index + n_increment] / torch.sum(similarity_row))
+        return -1 * torch.log(positive_similarity / torch.sum(similarity_row))
     
     def forward(self, projected_vectors):
         similarity_matrix = self.__generate_similarity_matrix(projected_vectors)
@@ -68,4 +70,7 @@ class TransferClassifier(nn.Module):
 
     def forward(self, x):
         return self.layers(x)
+
+def save_model(model, name):
+    torch.save(model.state_dict(), '/home/arjun_verma/SimCLR_Implementation/models/' + name)
 
