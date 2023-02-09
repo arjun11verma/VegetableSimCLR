@@ -15,6 +15,9 @@ class VegetableDataset():
                 self.image_labels[vegetable_dir].append(image)
         
         self.image_names = list(self.image_labels.keys())
+        self.transform = torch.nn.Sequential( 
+            transforms.Resize((224, 224))
+        )
 
     def __len__(self):
         return len(self.image_labels)
@@ -23,38 +26,29 @@ class VegetableDataset():
         vegetable_class, idx = key
         img_path = os.path.join(self.img_dir, vegetable_class, self.image_labels[vegetable_class][idx])
         image = read_image(img_path).float()
-        return image
+        return self.transform(image)
     
     def __generate_mini_batch(self, n):
         if (n > len(self.image_names)): ValueError(f'Minibatch unaugmented size {n} is greater than number of classes {len(self.image_names)}')
 
+        mini_batch = torch.zeros((n * 2, 3, 224, 224))
         class_labels = self.image_names.copy()
         batch_labels = []
-
-        base_class = random.choice(class_labels)
-        base_idx = random.randint(0, len(self.image_labels[base_class]) - 1)
-
-        class_labels.remove(base_class)
-        batch_labels.append((base_class, base_idx))
         visited = set()
-        
-        mini_batch = torch.zeros([n * 2, 3, 224, 224], dtype=torch.float)
-        mini_batch[0] = self.__getitem__((base_class, base_idx))
 
-        visited.add((base_class, base_idx))
-        for i in range(1, n):
+        for i in range(n):
             add_class = random.choice(class_labels)
             add_idx = random.randint(0, len(self.image_labels[add_class]) - 1)
 
             if ((add_class, add_idx) in visited): 
                 i -= 1
                 continue
+                
+            mini_batch[i] = self.__getitem__((add_class, add_idx))
             
             class_labels.remove(add_class)
             batch_labels.append((add_class, add_idx))
             visited.add((add_class, add_idx))
-
-            mini_batch[i] = self.__getitem__((add_class, add_idx))
         
         return mini_batch, batch_labels
     
@@ -69,6 +63,9 @@ class VegetableDataset():
                 mini_batch[i + n] = self.__getitem__((augment_class, augment_idx))
             else:
                 mini_batch[i + n] = augment(mini_batch[i]).float()
+            if (mini_batch[i + n].shape != (3, 224, 224)):
+                i -= 1
+                continue
         return mini_batch, batch_labels + batch_labels
     
     def get_mini_batch(self, n, augment):
