@@ -2,10 +2,9 @@ import model
 import data_loader
 import torch
 import gc
+from tqdm import tqdm
 
-# env: slideEnv
-
-USE_CUDA = True
+USE_CUDA = False
 
 def train_model(learning_rate, num_epochs, n):
     gc.collect()
@@ -20,7 +19,7 @@ def train_model(learning_rate, num_epochs, n):
     training_dataset = data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/train')
 
     running_loss = 0
-    for i in (range(num_epochs)):
+    for i in range(num_epochs):
         mini_batch, batch_labels = training_dataset.get_mini_batch(n, data_loader.DataAugmentation.pull_from_class)
         mini_batch = mini_batch.to(device)
 
@@ -32,11 +31,11 @@ def train_model(learning_rate, num_epochs, n):
         optimizer.step()
 
         running_loss += loss.item()
-        if (i % 5 == 0):
-            print(f'Loss at epoch {i}: {round(running_loss / 5, 3) if i != 0 else running_loss}')
+        if (i % 20 == 0):
+            print(f'Loss at epoch {i}: {round(running_loss / 20, 3) if i != 0 else running_loss}')
             running_loss = 0
     
-    model.save_model(sim_clr_model, f'model_pullfromclass_{num_epochs}_epochs.pt')
+    model.save_model(sim_clr_model, f'model_augmentcrop_{num_epochs}_epochs.pt')
 
 def sample_batch(n):
     training_dataset = data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/train')
@@ -46,4 +45,4 @@ def sample_batch(n):
         data_loader.save_image(img, f'Image_{i}_Category_{labels[i][0]}.jpg')
 
 if __name__ == '__main__':
-    train_model(0.25, 500, 3) # PID - 367
+    train_model(0.25, 100, 2)

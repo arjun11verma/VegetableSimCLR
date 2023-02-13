@@ -54,7 +54,7 @@ class NXTentLoss(nn.Module):
         sum_selection[positive_index] = 0
         similarity_row = similarity_row * sum_selection
 
-        return -1 * torch.log(positive_similarity / torch.sum(similarity_row))
+        return -1 * torch.log(positive_similarity / torch.sqrt(torch.sum(similarity_row)))
     
     def forward(self, projected_vectors):
         similarity_matrix = self.__generate_similarity_matrix(projected_vectors)
