@@ -1,24 +1,73 @@
 import torch.nn as nn
 import data_loader
-import model
+import models
 import random
 import torch
 import gc
+
+import pandas as pd
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import numpy as np
+
 from tqdm import tqdm
 
-USE_CUDA = True
+ACTIVE_CUDA_DEVICE = 0 # -1 if not using cuda
 
 def compare_vector_similarities(vectors):
     return nn.CosineSimilarity(dim=0, eps=1e-6)(vectors[0], vectors[1])
 
-def eval(simclr_model : model.SimCLR, dataset : data_loader.VegetableDataset, num_negative_pairs, num_positive_pairs):
+def tSNEVisualization(model, dataset : data_loader.VegetableDataset, num_vectors):
     gc.collect()
     torch.cuda.empty_cache()
 
-    device = torch.device('cuda' if USE_CUDA else 'cpu')
+    device = torch.device(ACTIVE_CUDA_DEVICE if ACTIVE_CUDA_DEVICE > -1 else 'cpu')
+
+    tsne = TSNE(n_components=2, verbose=1, perplexity=5, n_iter=300)
+    colors = cm.rainbow(np.linspace(0, 1, len(dataset.image_names)))
+
+    latent_space = {}
+    visited_set = set()
+
+    model.eval()
+    model.to(device)
+
+    batch_size = 20
+    for image_class in tqdm(dataset.image_names):
+        latent_space[image_class] = np.zeros((num_vectors, 1000))
+        for batch in range(batch_size, num_vectors + 1, batch_size):
+            input = torch.zeros((batch_size, 3, 224, 224))
+
+            for i in range(batch_size):
+                index = (image_class, random.randint(0, len(dataset.image_labels[image_class]) - 1))
+                if (index in visited_set):
+                    i -=1
+                    continue
+                input[i] = dataset[index] # change batch size
+            
+            input = input.to(device)
+            outputs = model.eval_forward(input)
+            outputs = outputs.cpu().detach().numpy()
+            latent_space[image_class][(batch - batch_size):batch] = outputs
+            
+        latent_space[image_class] = tsne.fit_transform(latent_space[image_class])
     
-    simclr_model.eval()
-    simclr_model.to(device)
+    color_idx = 0
+    for image_class in latent_space:
+        plt.scatter(latent_space[image_class][:, 0], latent_space[image_class][:, 1], color=colors[color_idx])
+        color_idx += 1
+    
+    plt.savefig(f'/home/arjun_verma/SimCLR_Implementation/test_outputs/tSNE_{num_vectors}_vectors_per_class.png')
+
+def eval(model, dataset : data_loader.VegetableDataset, num_negative_pairs, num_positive_pairs):
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    device = torch.device(ACTIVE_CUDA_DEVICE if ACTIVE_CUDA_DEVICE > -1 else 'cpu')
+    
+    model.eval()
+    model.to(device)
 
     average_negative_similarity = 0 # this number should be as close to zero as possible
     average_positive_similarity = 0 # this number should be as close to one as possible
@@ -42,7 +91,7 @@ def eval(simclr_model : model.SimCLR, dataset : data_loader.VegetableDataset, nu
         input[0], input[1] = dataset[first], dataset[second]
         input = input.to(device)
 
-        projected_vectors = simclr_model.eval_forward(input)
+        projected_vectors = model.eval_forward(input)
 
         average_negative_similarity += compare_vector_similarities(projected_vectors).cpu().item()
 
@@ -62,7 +111,7 @@ def eval(simclr_model : model.SimCLR, dataset : data_loader.VegetableDataset, nu
         input[0], input[1] = dataset[first], dataset[second]
         input = input.to(device)
 
-        projected_vectors = simclr_model.eval_forward(input)
+        projected_vectors = model.eval_forward(input)
 
         average_positive_similarity += compare_vector_similarities(projected_vectors).cpu().item()
     
@@ -78,7 +127,7 @@ def eval(simclr_model : model.SimCLR, dataset : data_loader.VegetableDataset, nu
     print('------------------------------------------------')
 
 if __name__ == '__main__':
-    simclr_model = model.load_model('model_augmentcrop_100_epochs.pt', 500, 100)
-    eval(simclr_model, data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/train'), 100, 100)
-
-
+    model = models.load_model('model_augmentcrop_100_epochs.pt', 2048, 2048)
+    dataset = data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/test')
+    eval(model, dataset, 50, 50)
+    #tSNEVisualization(model, data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/test'), 10)
