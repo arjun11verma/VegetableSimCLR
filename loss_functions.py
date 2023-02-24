@@ -17,6 +17,7 @@ class NXTentLoss(nn.Module):
         for any index i depending on whether i is less than or greater than n respectively
         """
         similarity_matrix = torch.zeros([projected_vectors.shape[0], projected_vectors.shape[0] - 1], dtype=torch.float64).to(self.device)
+
         for i, x in enumerate(projected_vectors):
             if (i == projected_vectors.shape[0] - 1): break
             

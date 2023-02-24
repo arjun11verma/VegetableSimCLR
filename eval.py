@@ -5,7 +5,6 @@ import random
 import torch
 import gc
 
-import pandas as pd
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -24,7 +23,7 @@ def tSNEVisualization(model, dataset : data_loader.VegetableDataset, num_vectors
 
     device = torch.device(ACTIVE_CUDA_DEVICE if ACTIVE_CUDA_DEVICE > -1 else 'cpu')
 
-    tsne = TSNE(n_components=2, verbose=1, perplexity=5, n_iter=300)
+    tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     colors = cm.rainbow(np.linspace(0, 1, len(dataset.image_names)))
 
     latent_space = {}
@@ -35,7 +34,7 @@ def tSNEVisualization(model, dataset : data_loader.VegetableDataset, num_vectors
 
     batch_size = 20
     for image_class in tqdm(dataset.image_names):
-        latent_space[image_class] = np.zeros((num_vectors, 1000))
+        latent_space[image_class] = np.zeros((num_vectors, 32))
         for batch in range(batch_size, num_vectors + 1, batch_size):
             input = torch.zeros((batch_size, 3, 224, 224))
 
@@ -47,7 +46,7 @@ def tSNEVisualization(model, dataset : data_loader.VegetableDataset, num_vectors
                 input[i] = dataset[index] # change batch size
             
             input = input.to(device)
-            outputs = model.eval_forward(input)
+            outputs = model.forward(input) # eval_forward
             outputs = outputs.cpu().detach().numpy()
             latent_space[image_class][(batch - batch_size):batch] = outputs
             
@@ -127,7 +126,8 @@ def eval(model, dataset : data_loader.VegetableDataset, num_negative_pairs, num_
     print('------------------------------------------------')
 
 if __name__ == '__main__':
-    model = models.load_model('model_augmentcrop_100_epochs.pt', 2048, 2048)
+    #model = models.BaseResNet()
+    model = models.load_model('vit_model_pull_from_class_1500_epochs_12_classes.pt', models.VisualTransformerContrastive(64, 32))
     dataset = data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/test')
-    eval(model, dataset, 50, 50)
-    #tSNEVisualization(model, data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/test'), 10)
+    #eval(model, dataset, 100, 100)
+    tSNEVisualization(model, data_loader.VegetableDataset('/home/arjun_verma/SimCLR_Implementation/data/Vegetable Images/test'), 80)
